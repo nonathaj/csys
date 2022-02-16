@@ -15,23 +15,6 @@
 
 namespace csys
 {
-    /*!
-     * \brief
-     *      Macro for supporting trivial types
-     */
-#define SUPPORT_TYPE(TYPE, TYPE_NAME)\
-    template<> struct is_supported_type<TYPE> { static constexpr bool value = true; }; \
-    template<> \
-    struct CSYS_API ArgData<TYPE> \
-    { \
-      explicit ArgData(std::string name) : m_Name(std::move(name)), m_Value() {} \
-      explicit ArgData(std::string name, TYPE&& defaultValue) : m_Name(std::move(name)), m_DefaultValue(std::move(defaultValue)), m_Value() {} \
-      const std::string m_Name; \
-      std::string m_TypeName = TYPE_NAME; \
-      std::optional<TYPE> m_DefaultValue; \
-      TYPE m_Value; \
-    };
-
     using NULL_ARGUMENT = void (*)();    //!< Null argument typedef
 
     /*!
@@ -39,6 +22,12 @@ namespace csys
      *      Base case struct where a type is not supported
      */
     template<typename> struct is_supported_type { static constexpr bool value = false; };
+    
+    /*!
+     * \brief
+     *      Base case struct where a type is not supported
+     */
+    template<typename> struct type_name { inline static const std::string value = "Unsupported Type"; };
 
     /*!
      * \brief
@@ -69,11 +58,18 @@ namespace csys
         explicit ArgData(std::string name, T&& defaultValue) : m_Name(std::move(name)), m_DefaultValue(std::forward<T>(defaultValue)), m_Value()
         { }
 
-        const std::string m_Name = "";                  //!< Name of argument
-        std::string m_TypeName = "Unsupported Type";    //!< Name of type
+        const std::string m_Name;                       //!< Name of argument
         std::optional<T> m_DefaultValue;                //!< Value used if not enough arguments are provided
         T m_Value;                                      //!< Actual value
     };
+    
+    /*!
+     * \brief
+     *      Macro for supporting trivial types
+     */
+#define SUPPORT_TYPE(TYPE, TYPE_NAME)\
+    template<> struct is_supported_type<TYPE> { static constexpr bool value = true; }; \
+    template<> struct type_name<TYPE> { inline static const std::string value = TYPE_NAME; };
 
     //! Supported types
     SUPPORT_TYPE(std::string, "String")
@@ -108,34 +104,8 @@ namespace csys
 
     //! Supported containers
     template<typename U> struct is_supported_type<std::vector<U>> { static constexpr bool value = is_supported_type<U>::value; };
-    template<typename T>
-    struct CSYS_API ArgData<std::vector<T>>
-    {
-        /*!
-         * \brief
-         *      Constructor for a vector argument
-         * \param name
-         *      Name for argument
-         */
-        explicit ArgData(std::string name) : m_Name(std::move(name))
-        {}
+    template<typename U> struct type_name<std::vector<U>> { inline static const std::string value = "Vector_Of_" + type_name<U>::value; };
 
-        /*!
-         * \brief
-         *      Non-default constructor
-         * \param name
-         *      Name of the argument
-         * \param defaultValue
-         *      Value to be used if not enough parameters are provided to the command
-         */
-        explicit ArgData(std::string name, T&& defaultValue) : m_Name(std::move(name)), m_DefaultValue(std::forward<T>(defaultValue))
-        { }
-
-        const std::string m_Name;                                                                   //!< Name of argument
-        std::string m_TypeName = std::string("Vector_Of_") + ArgData<T>("").m_TypeName;             //!< Type name
-        std::optional<std::vector<T>> m_DefaultValue;                                               //!< Value used if not enough arguments are provided
-        std::vector<T> m_Value;                                                                     //!< Vector of data
-    };
 
     /*!
      * \brief
@@ -221,7 +191,7 @@ namespace csys
          */
         std::string Info()
         {
-            auto info = std::string(" [") + m_Arg.m_Name + ":" + m_Arg.m_TypeName;
+            auto info = std::string(" [") + m_Arg.m_Name + ":" + type_name<T>::value;
             if (m_Arg.m_DefaultValue)
             {
                 info += ":default=" + to_string(*m_Arg.m_DefaultValue);
