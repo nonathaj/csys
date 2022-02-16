@@ -54,6 +54,24 @@ namespace csys
         */
     [[nodiscard]] inline size_t EndPoi(const std::string& str)
     { return str.size() + 1; }
+
+    using std::to_string;
+    [[nodiscard]] inline std::string to_string(const std::string& str)
+    { return str; }
+    
+    template<typename T>
+    [[nodiscard]] inline std::string to_string(const std::vector<T>& vec)
+    {
+        std::string str = "[";
+        for (auto i = vec.begin(); i != vec.end(); ++i)
+        {
+            if (i != vec.begin())
+                str += " ";
+            str += to_string(*i);
+        }
+        str += "]";
+        return str; 
+    }
 }
 
 #endif //CSYS_CSYS_STRING_H

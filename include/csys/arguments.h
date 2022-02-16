@@ -10,6 +10,8 @@
 #include "csys/exceptions.h"
 #include "csys/argument_parser.h"
 #include <vector>
+#include <optional>
+#include <string>
 
 namespace csys
 {
@@ -23,8 +25,10 @@ namespace csys
     struct CSYS_API ArgData<TYPE> \
     { \
       explicit ArgData(std::string name) : m_Name(std::move(name)), m_Value() {} \
+      explicit ArgData(std::string name, TYPE&& defaultValue) : m_Name(std::move(name)), m_DefaultValue(std::move(defaultValue)), m_Value() {} \
       const std::string m_Name; \
       std::string m_TypeName = TYPE_NAME; \
+      std::optional<TYPE> m_DefaultValue; \
       TYPE m_Value; \
     };
 
@@ -51,12 +55,24 @@ namespace csys
          * \param name
          *      Name of the argument
          */
-        explicit ArgData(std::string name) : m_Name(std::move(name)), m_Value()
+        explicit ArgData(std::string name) : m_Name(std::move(name)), m_DefaultValue(), m_Value()
+        { }
+        
+        /*!
+         * \brief
+         *      Non-default constructor
+         * \param name
+         *      Name of the argument
+         * \param defaultValue
+         *      Value to be used if not enough parameters are provided to the command
+         */
+        explicit ArgData(std::string name, T&& defaultValue) : m_Name(std::move(name)), m_DefaultValue(std::forward<T>(defaultValue)), m_Value()
         { }
 
         const std::string m_Name = "";                  //!< Name of argument
         std::string m_TypeName = "Unsupported Type";    //!< Name of type
-        T m_Value;                                 //!< Actual value
+        std::optional<T> m_DefaultValue;                //!< Value used if not enough arguments are provided
+        T m_Value;                                      //!< Actual value
     };
 
     //! Supported types
@@ -104,8 +120,20 @@ namespace csys
         explicit ArgData(std::string name) : m_Name(std::move(name))
         {}
 
+        /*!
+         * \brief
+         *      Non-default constructor
+         * \param name
+         *      Name of the argument
+         * \param defaultValue
+         *      Value to be used if not enough parameters are provided to the command
+         */
+        explicit ArgData(std::string name, T&& defaultValue) : m_Name(std::move(name)), m_DefaultValue(std::forward<T>(defaultValue))
+        { }
+
         const std::string m_Name;                                                                   //!< Name of argument
         std::string m_TypeName = std::string("Vector_Of_") + ArgData<T>("").m_TypeName;             //!< Type name
+        std::optional<std::vector<T>> m_DefaultValue;                                               //!< Value used if not enough arguments are provided
         std::vector<T> m_Value;                                                                     //!< Vector of data
     };
 
@@ -141,6 +169,20 @@ namespace csys
             static_assert(is_supported_type_v<ValueType>,
                     "ValueType 'T' is not supported, see 'Supported types' for more help");
         }
+        
+        /*!
+         * \brief
+         *      Constructor for an argument for naming
+         * \param name
+         *      Name of the argument
+         * \param defaultValue
+         *      Value to be used if not enough parameters are provided to the command
+         */
+        explicit Arg(const std::string &name, T&& defaultValue) : m_Arg(name, std::forward<T>(defaultValue))
+        {
+            static_assert(is_supported_type_v<ValueType>,
+                    "ValueType 'T' is not supported, see 'Supported types' for more help");
+        }
 
         /*!
          * \brief
@@ -158,7 +200,14 @@ namespace csys
 
             // Check if there are more arguments to be read in
             if (NextPoi(input, index).first == EndPoi(input))
+            {
+                if (m_Arg.m_DefaultValue)
+                {
+                    m_Arg.m_Value = *m_Arg.m_DefaultValue;
+                    return *this;
+                }
                 throw Exception("Not enough arguments were given", input);
+            }
             // Set value grabbed from input aka command line argument
             m_Arg.m_Value = ArgumentParser<ValueType>(input, start).m_Value;
             return *this;
@@ -172,7 +221,13 @@ namespace csys
          */
         std::string Info()
         {
-            return std::string(" [") + m_Arg.m_Name + ":" + m_Arg.m_TypeName + "]";
+            auto info = std::string(" [") + m_Arg.m_Name + ":" + m_Arg.m_TypeName;
+            if (m_Arg.m_DefaultValue)
+            {
+                info += ":default=" + to_string(*m_Arg.m_DefaultValue);
+            }
+            info += "]";
+            return info;
         }
 
         ArgData<ValueType> m_Arg;    //!< Data relating to this argument

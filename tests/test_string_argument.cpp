@@ -128,4 +128,14 @@ TEST_CASE("String Argument")
 //	s.runCommand("char2 \\\\"); // \ good
 //	s.runCommand("char3 a");    // a good
 //	s.runCommand("char4 b");    // b good
+
+    s.RegisterCommand("def1", "", [](std::string s){
+        CHECK(s == "hello");
+    }, Arg<std::string>("", "hello"));
+    s.RegisterCommand("def2", "", [](std::string s){
+        CHECK(s != "hello");
+    }, Arg<std::string>("", "hello"));
+
+    s.RunCommand("def1");
+    s.RunCommand("def2 goodbye");
 }
