@@ -171,7 +171,7 @@ namespace csys
             (void) (_);
 
             // Call function with unpacked tuple
-            m_Function((std::get<Is_c>(m_Arguments).m_Arg.m_Value)...);
+            m_Function((std::get<Is_c>(m_Arguments).m_Value)...);
         }
 
         /*!
