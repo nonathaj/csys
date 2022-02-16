@@ -93,6 +93,16 @@ namespace csys
     public:
 
         using ValueType = std::remove_cv_t<std::remove_reference_t<T>>;    //!< Type of this argument
+        
+        /*!
+         * \brief
+         *      Constructor for an argument
+         */
+        explicit Arg()
+        {
+            static_assert(is_supported_type_v<ValueType>,
+                    "ValueType 'T' is not supported, see 'Supported types' for more help");
+        }
 
         /*!
          * \brief
